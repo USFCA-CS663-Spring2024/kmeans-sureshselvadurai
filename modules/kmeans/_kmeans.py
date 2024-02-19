@@ -76,6 +76,9 @@ class KMeans:
         centroids : array, shape (n_clusters, n_features)
             Coordinates of cluster centers.
 
+        centroids_original_scale : array, shape (n_clusters, n_features)
+            Coordinates of cluster centers in the original scale.
+
         """
         if not isinstance(X, np.ndarray) or X.ndim != 2:
             raise ValueError("Input data must be a 2-dimensional numpy array")
@@ -83,28 +86,32 @@ class KMeans:
             raise ValueError("Number of clusters cannot exceed number of data points")
 
         # Normalize the data
-        X_normalized = (X - X.mean(axis=0)) / X.std(axis=0)
+        X_mean = X.mean(axis=0)
+        X_std = X.std(axis=0)
+        X_normalized = (X - X_mean) / X_std
 
         if self.verbose:
             print("Initialization method: {}".format(self.init))
 
         rng = np.random.default_rng(self.random_state)
-        centroids = initialize_centroids(X_normalized, self.n_clusters, self.init, rng)
+        centroids_normalized = initialize_centroids(X_normalized, self.n_clusters, self.init, rng)
+        centroids_original_scale = centroids_normalized * X_std + X_mean
 
         for _ in range(self.max_iter):
-            labels, new_centroids = self._expectation_maximization(X_normalized, centroids)
-            if np.allclose(centroids, new_centroids, atol=self.tol):
+            labels, new_centroids_normalized = self._expectation_maximization(X_normalized, centroids_normalized)
+            if np.allclose(centroids_normalized, new_centroids_normalized, atol=self.tol):
                 break
-            centroids = new_centroids
+            centroids_normalized = new_centroids_normalized
 
             if self.balanced:
-                labels = balance_clusters(X_normalized, labels, centroids, self.balanced)
+                labels = balance_clusters(X_normalized, labels, centroids_normalized, self.balanced)
 
-        self.cluster_centers_ = centroids
+        self.cluster_centers_ = centroids_original_scale
         self.labels_ = labels
-        self.inertia_ = np.sum((X_normalized - centroids[labels]) ** 2)
+        self.inertia_ = np.sum((X_normalized - centroids_normalized[labels]) ** 2)
 
-        return self.labels_, self.cluster_centers_
+        return self.labels_, centroids_original_scale
+
 
     def fit_predict(self, X):
         """Compute cluster centers and predict cluster index for each sample.
@@ -170,8 +177,8 @@ class KMeans:
         return np.argmin(distances, axis=1)
 
     @staticmethod
-    def plot(data, labels, title='Scatter Plot of Data Points'):
-        """Plot 2D scatter plot of data points colored by labels.
+    def plot(data, labels, centroids=None, title='Scatter Plot of Data Points'):
+        """Plot 2D scatter plot of data points colored by labels with optional centroids.
 
         Parameters:
         -----------
@@ -180,6 +187,12 @@ class KMeans:
 
         labels : numpy array, shape (n_samples,)
             Labels corresponding to each data point.
+
+        centroids : numpy array, shape (n_clusters, 2), optional
+            Coordinates of cluster centroids.
+
+        title : str, default='Scatter Plot of Data Points'
+            Title of the plot.
 
         """
         if data.shape[1] != 2:
@@ -190,6 +203,8 @@ class KMeans:
         unique_labels = np.unique(labels)
         for label in unique_labels:
             plt.scatter(data[labels == label, 0], data[labels == label, 1], label=label, s=9)
+        if centroids is not None:
+            plt.scatter(centroids[:, 0], centroids[:, 1], marker='x', color='red', label='Centroids')
         plt.title(title)
         plt.xlabel('Feature 1')
         plt.ylabel('Feature 2')
