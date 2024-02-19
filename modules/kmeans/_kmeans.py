@@ -1,6 +1,9 @@
 # kmeans.py
 import numpy as np
-from utils import initialize_centroids, balance_clusters
+from modules._utils import initialize_centroids, balance_clusters
+import matplotlib.pyplot as plt
+from sklearn.metrics import adjusted_rand_score, silhouette_score, completeness_score, homogeneity_score, v_measure_score
+
 
 
 class KMeans:
@@ -164,3 +167,53 @@ class KMeans:
         X_normalized = (X - X.mean(axis=0)) / X.std(axis=0)
         distances = np.linalg.norm(X_normalized[:, np.newaxis, :] - self.cluster_centers_, axis=2)
         return np.argmin(distances, axis=1)
+
+    @staticmethod
+    def plot(data, labels, title='Scatter Plot of Data Points'):
+        """Plot 2D scatter plot of data points colored by labels.
+
+        Parameters:
+        -----------
+        data : numpy array, shape (n_samples, 2)
+            Data points.
+
+        labels : numpy array, shape (n_samples,)
+            Labels corresponding to each data point.
+
+        """
+        if data.shape[1] != 2:
+            raise ValueError("Data must be 2-dimensional")
+
+        # Create a scatter plot
+        plt.figure(figsize=(5, 4))
+        unique_labels = np.unique(labels)
+        for label in unique_labels:
+            plt.scatter(data[labels == label, 0], data[labels == label, 1], label=label, s=9)
+        plt.title(title)
+        plt.xlabel('Feature 1')
+        plt.ylabel('Feature 2')
+        plt.legend()
+        plt.show()
+
+    def evaluate_performance(self, true_labels):
+        """Evaluate the performance of the clustering algorithm by comparing its labels with true labels.
+        Parameters:
+        -----------
+        true_labels : array-like, shape (n_samples,)
+            True cluster labels.
+        """
+        if self.labels_ is None:
+            raise ValueError("Model not fitted yet. Call fit method first.")
+
+        true_labels_2d = np.array(true_labels).reshape(-1, 1)  # Reshape to 2D array
+        metrics = {
+            'Adjusted Rand Index': adjusted_rand_score(true_labels, self.labels_),
+            'Silhouette Score': silhouette_score(true_labels_2d, self.labels_),  # Pass the reshaped array
+            'Completeness Score': completeness_score(true_labels, self.labels_),
+            'Homogeneity Score': homogeneity_score(true_labels, self.labels_),
+            'V-measure Score': v_measure_score(true_labels, self.labels_)
+        }
+
+        # Print metrics
+        for metric, score in metrics.items():
+            print(f"{metric}: {score}")
