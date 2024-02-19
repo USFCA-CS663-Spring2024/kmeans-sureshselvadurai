@@ -3,7 +3,8 @@ import numpy as np
 from modules._utils import initialize_centroids, balance_clusters
 import matplotlib.pyplot as plt
 from sklearn.metrics import adjusted_rand_score, silhouette_score, completeness_score, homogeneity_score, v_measure_score
-
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
 
 
 class KMeans:
@@ -217,3 +218,22 @@ class KMeans:
         # Print metrics
         for metric, score in metrics.items():
             print(f"{metric}: {score}")
+
+    def confusion_matrix(self, true_labels):
+        """Compute and visualize the confusion matrix.
+
+        Parameters:
+        -----------
+        true_labels : array-like, shape (n_samples,)
+            True cluster labels.
+        """
+        if self.labels_ is None:
+            raise ValueError("Model not fitted yet. Call fit method first.")
+
+        cm = confusion_matrix(true_labels, self.labels_)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="YlGnBu")
+        plt.xlabel('Predicted labels')
+        plt.ylabel('True labels')
+        plt.title('Confusion Matrix')
+        plt.show()
