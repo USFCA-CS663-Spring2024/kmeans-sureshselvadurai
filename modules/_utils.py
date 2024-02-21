@@ -68,32 +68,39 @@ def balance_clusters(X, labels, centroids, balanced):
         Updated labels after balancing clusters.
 
     """
+
     if not balanced:
         return labels
 
     cluster_counts = np.bincount(labels, minlength=centroids.shape[0])
     target_count = len(X) // centroids.shape[0]
+    print(cluster_counts)
 
-    # Calculate excess points in each cluster
-    excess_points = cluster_counts - target_count
-    excess_indices = np.where(excess_points > 0)[0]
+    while not all(count == target_count for count in cluster_counts):
+        # Calculate excess points in each cluster
+        excess_points = cluster_counts - target_count
+        excess_indices = np.where(excess_points > 0)[0]
+        print(cluster_counts)
+        print("-------")
 
-    # Reassign excess points to other clusters
-    for cluster_idx in excess_indices:
-        cluster_distances = np.linalg.norm(X[labels == cluster_idx] - centroids[cluster_idx], axis=1)
-        closest_indices = np.argsort(cluster_distances)[:excess_points[cluster_idx]]
-        labels[labels == cluster_idx][closest_indices] = -1  # Mark excess points for reassignment
-
-    # Reassign marked points to nearest non-excess cluster
-    excess_indices = labels == -1
-    while np.any(excess_indices):
-        excess_X = X[excess_indices]
-        excess_labels = predict(excess_X, centroids)
-        labels[excess_indices] = excess_labels  # Reassign excess points
-        excess_indices = labels == -1
+        # Reassign excess points to other clusters
+        for cluster_idx in excess_indices:
+            excess_indices_cluster = np.where(labels == cluster_idx)[0]
+            excess_indices_cluster = excess_indices_cluster[:excess_points[cluster_idx]]
+            excess_X = X[excess_indices_cluster]
+            excess_labels = np.zeros_like(excess_indices_cluster, dtype=int)
+            for i, idx in enumerate(excess_indices_cluster):
+                dists = np.linalg.norm(excess_X[i] - centroids, axis=1)
+                sorted_labels_by_distance = np.argsort(dists)
+                for lbl in sorted_labels_by_distance:
+                    if cluster_counts[lbl] < target_count:
+                        excess_labels[i] = lbl
+                        cluster_counts[cluster_idx] -= 1
+                        cluster_counts[lbl] += 1
+                        break
+            labels[excess_indices_cluster] = excess_labels
 
     return labels
-
 
 def predict(X, centroids):
     """Predict the closest cluster each sample in X belongs to.

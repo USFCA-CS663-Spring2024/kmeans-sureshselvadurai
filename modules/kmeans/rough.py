@@ -1,6 +1,6 @@
 # kmeans.py
 import numpy as np
-from modules._utils import initialize_centroids
+from modules._utils import initialize_centroids, balance_clusters
 import matplotlib.pyplot as plt
 from sklearn.metrics import adjusted_rand_score, silhouette_score, completeness_score, homogeneity_score, v_measure_score
 import seaborn as sns
@@ -101,6 +101,9 @@ class KMeans:
                 break
             centroids_normalized = new_centroids_normalized
 
+            # if self.balanced:
+            #     labels = balance_clusters(X_normalized, labels, centroids_normalized, self.balanced)
+
         self.cluster_centers_ = centroids_original_scale
         self.labels_ = labels
 
@@ -144,19 +147,28 @@ class KMeans:
 
         """
         labels = np.full(len(X), 4, dtype=int)
+        counts = np.zeros(self.n_clusters, dtype=int)
         distances = np.linalg.norm(X[:, np.newaxis, :] - centroids, axis=2)
 
         if self.balanced:
-            for j in range(self.n_clusters):
-                for i in range(len(X) // self.n_clusters):
+            for i in range(len(X) // self.n_clusters):
+                for j in range(self.n_clusters):
                     min_dist = float('inf')
                     min_idx = -1
                     for idx, dist in enumerate(distances[:, j]):
                         if dist <= min_dist and not np.any(np.isinf(distances[idx, :])):
                             min_dist = dist
                             min_idx = idx
+                        # print(distances)
+                        # print(j)
+                        # print(min_idx)
+                        # print('-------')
+
                     labels[min_idx] = j
                     distances[min_idx,j] = float('inf')
+                    # print("************")
+                    # print(labels)
+                    # print("************")
             new_centroids = np.array([X[labels == i].mean(axis=0) for i in range(self.n_clusters)])
 
         else:
